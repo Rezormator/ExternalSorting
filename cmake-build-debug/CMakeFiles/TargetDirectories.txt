@@ -1,0 +1,3 @@
+D:/Projects/Algorithms/externalSorting/cmake-build-debug/CMakeFiles/externalSorting.dir
+D:/Projects/Algorithms/externalSorting/cmake-build-debug/CMakeFiles/edit_cache.dir
+D:/Projects/Algorithms/externalSorting/cmake-build-debug/CMakeFiles/rebuild_cache.dir
