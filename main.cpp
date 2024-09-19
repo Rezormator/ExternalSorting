@@ -56,12 +56,12 @@ int main() {
     std::chrono::duration<double> duration = end - start;
     std::cout << "Operation took " << duration.count() << " seconds." << std::endl;
 
-    // std::cout << "Sorting..." << std::endl;
-    // start = std::chrono::high_resolution_clock::now();
-    // FilesActions::sortFileBySection(inputFile, tempFile, SORT_PART_SIZE_MB);
-    // end = std::chrono::high_resolution_clock::now();
-    // duration = end - start;
-    // std::cout << "Operation took " << duration.count() << " seconds." << std::endl;
+    std::cout << "Sorting..." << std::endl;
+    start = std::chrono::high_resolution_clock::now();
+    FilesActions::sortFileBySection(inputFile, tempFile, SORT_PART_SIZE_MB);
+    end = std::chrono::high_resolution_clock::now();
+    duration = end - start;
+    std::cout << "Operation took " << duration.count() << " seconds." << std::endl;
 
     std::cout << "Mergin..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
