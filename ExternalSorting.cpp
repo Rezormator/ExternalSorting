@@ -3,9 +3,11 @@
 #include <utility>
 #include "FilesActions.h"
 #include <iostream>
+#include <chrono>
 
 constexpr int FILES_COUNT = 6;
 constexpr int INT_SIZE = 4;
+constexpr int INTS_IN_MB = 262144;
 
 ExternalSorting::ExternalSorting(std::string inputFile, const std::vector<std::string> &subFilesB,
                                  const std::vector<std::string> &subFilesC)
@@ -15,11 +17,15 @@ ExternalSorting::ExternalSorting(std::string inputFile, const std::vector<std::s
 }
 
 void ExternalSorting::mergin() {
-    mergingInputFile();
+    std::vector subFiles{FilesActions::openAllFiles(subFilesB), FilesActions::openAllFiles(subFilesC)};
+    const auto start = std::chrono::high_resolution_clock::now();
+    mergingInputFile(subFiles[filesToRead]);
     std::cout << "Input file merged." << std::endl;
+    const auto end = std::chrono::high_resolution_clock::now();
+    const std::chrono::duration<double> duration = end - start;
+    std::cout << "Operation took " << duration.count() << " seconds." << std::endl;
 
     const std::vector subFilesNames = {subFilesB, subFilesC};
-    std::vector subFiles{FilesActions::openAllFiles(subFilesB), FilesActions::openAllFiles(subFilesC)};
     while (!isSorted(subFiles[filesToRead])) {
         mergingSubFiles(subFiles[filesToRead], subFiles[filesToWrite]);
         FilesActions::clearFiles(subFiles[filesToRead], subFilesNames[filesToRead]);
@@ -29,7 +35,7 @@ void ExternalSorting::mergin() {
         FilesActions::closeAllFiles(subFilesGroup);
 
     // std::ifstream file(subFilesNames[filesToRead][0], std::ios::binary);
-    // for (int i = 0; i < 1000; i++){
+    // for (int i = 0; i < 30; i++){
     //     int number;
     //     file.read(reinterpret_cast<char*>(&number), sizeof(int));
     //     std::cout << number << ' ';
@@ -38,33 +44,50 @@ void ExternalSorting::mergin() {
     // std::cout << std::endl;
 }
 
-void ExternalSorting::mergingInputFile() const {
-    int position = 0;
-    int number, previousNumber;
+void ExternalSorting::mergingInputFile(const std::vector<std::fstream *> &subFiles) const {
     std::ifstream file(inputFile, std::ios::binary);
-    const std::vector<std::fstream *> subFiles = FilesActions::openAllFiles(subFilesB);
+    std::vector previousNumber(FILES_COUNT, 0);
 
-    bool finished = false;
-    while (!finished) {
-        for (int i = 0; i < FILES_COUNT; i++) {
-            file.seekg(position * INT_SIZE, std::ios::beg);
-            file.read(reinterpret_cast<char *>(&number), sizeof(int));
-
-            do {
-                subFiles[i]->write(reinterpret_cast<const char *>(&number), sizeof(int));
-                position++;
-                previousNumber = number;
-                if (!file.read(reinterpret_cast<char *>(&number), sizeof(int)))
-                    finished = true;
-            } while (previousNumber <= number && !finished);
-
-            if (finished)
-                break;
+    bool finishedReading = false;
+    int fileNumber = 0;
+    while (!finishedReading) {
+        std::vector<int> inputNumbers(INTS_IN_MB);
+        if (!file.read(reinterpret_cast<char *>(inputNumbers.data()), INTS_IN_MB * sizeof(int))) {
+            inputNumbers.resize(file.gcount() / sizeof(int));
         }
+
+        if (inputNumbers.empty()) {
+            finishedReading = true;
+            continue;
+        }
+
+        std::vector<std::vector<int>> numbers(FILES_COUNT);
+        int position = 0;
+        bool finished = false;
+        while (!finished) {
+            for (; fileNumber < FILES_COUNT; fileNumber++) {
+                do {
+                    numbers[fileNumber].push_back(inputNumbers[position]);
+                    previousNumber[fileNumber] = inputNumbers[position++];
+                    if (position >= inputNumbers.size())
+                        finished = true;
+                } while (previousNumber[fileNumber] <= inputNumbers[position] && !finished);
+
+                if (fileNumber == FILES_COUNT - 1)
+                    fileNumber = -1;
+
+                if (finished)
+                    break;
+            }
+        }
+        fileNumber++;
+
+        for (int i = 0; i < FILES_COUNT; i++)
+            subFiles[i]->write(reinterpret_cast<const char *>(numbers[i].data()), numbers[i].size() * sizeof(int));
     }
 
+    std::ranges::for_each(subFiles, [](std::fstream *subFile) { subFile->flush(); });
     file.close();
-    FilesActions::closeAllFiles(subFiles);
 }
 
 void ExternalSorting::mergingSubFiles(const std::vector<std::fstream *> &filesToRead,

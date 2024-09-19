@@ -13,7 +13,7 @@ private:
     int filesToWrite;
 
     void switchFiles();
-    void mergingInputFile() const;
+    void mergingInputFile(const std::vector<std::fstream *> &subFiles) const;
     static void mergingSubFiles(const std::vector<std::fstream *> &filesToRead,
                                 const std::vector<std::fstream *> &filesToWrite);
     static int minNumIndex(const std::vector<int> &numbers, const std::vector<bool> &condition);
