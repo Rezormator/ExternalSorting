@@ -5,7 +5,7 @@
 #include <iostream>
 #include <chrono>
 
-constexpr int FILES_COUNT = 6;
+constexpr int FILES_COUNT = 3;
 constexpr int INT_SIZE = 4;
 constexpr int INTS_IN_MB = 262144;
 
@@ -86,57 +86,156 @@ void ExternalSorting::mergingInputFile(const std::vector<std::fstream *> &subFil
             subFiles[i]->write(reinterpret_cast<const char *>(numbers[i].data()), numbers[i].size() * sizeof(int));
     }
 
-    std::ranges::for_each(subFiles, [](std::fstream *subFile) { subFile->flush(); });
+    // for (int i = 0; i < FILES_COUNT; i++) {
+    //     subFiles[i]->seekg(0, std::ios::beg);
+    //     std::cout << '#' << i + 1 << ' ';
+    //     int number;
+    //     while (subFiles[i]->read(reinterpret_cast<char *>(&number), sizeof(int)))
+    //         std::cout << number << ' ';
+    //     std::cout << std::endl;
+    // }
+    // for (int i = 0; i < FILES_COUNT; i++) {
+    //     subFiles[i]->seekg(0, std::ios::beg);
+    //     std::cout << '#' << i + 1 << ' ';
+    //     int number;
+    //     while (subFiles[i]->read(reinterpret_cast<char *>(&number), sizeof(int)))
+    //         std::cout << number << ' ';
+    //     std::cout << std::endl;
+    // }
     file.close();
 }
 
+// void ExternalSorting::mergingSubFiles(const std::vector<std::fstream *> &filesToRead,
+//                                       const std::vector<std::fstream *> &filesToWrite) {
+//     std::vector positions(FILES_COUNT, 0);
+//     std::vector finushed(FILES_COUNT, false);
+//
+//     for (int i = 0; i < FILES_COUNT; i++)
+//         if (FilesActions::isFileEmpty(filesToRead[i]))
+//             finushed[i] = true;
+//
+//     do {
+//         for (int i = 0; i < FILES_COUNT; i++) {
+//             if (std::ranges::all_of(finushed, [](const bool value) { return value; }))
+//                 break;
+//
+//             std::vector numbers(FILES_COUNT, 0);
+//             std::vector previousNumbers(FILES_COUNT, 0);
+//             std::vector continueProcessing(FILES_COUNT, false);
+//
+//             for (int j = 0; j < FILES_COUNT; j++) {
+//                 filesToRead[j]->seekg(positions[j] * INT_SIZE, std::ios::beg);
+//                 if (finushed[j] || filesToRead[j]->eof())
+//                     continue;
+//
+//                 filesToRead[j]->read(reinterpret_cast<char *>(&numbers[j]), sizeof(int));
+//                 positions[j]++;
+//                 continueProcessing[j] = true;
+//             }
+//
+//             do {
+//                 const auto minIndex = minNumIndex(numbers, continueProcessing);
+//                 filesToWrite[i]->write(reinterpret_cast<const char *>(&numbers[minIndex]), sizeof(int));
+//
+//                 continueProcessing[minIndex] = false;
+//                 previousNumbers[minIndex] = numbers[minIndex];
+//                 filesToRead[minIndex]->seekg(positions[minIndex] * INT_SIZE, std::ios::beg);
+//                 if (!filesToRead[minIndex]->read(reinterpret_cast<char *>(&numbers[minIndex]), sizeof(int))) {
+//                     finushed[minIndex] = true;
+//                     continue;
+//                 }
+//                 if (numbers[minIndex] < previousNumbers[minIndex]) {
+//                     continue;
+//                 }
+//                 positions[minIndex]++;
+//                 continueProcessing[minIndex] = true;
+//             } while (std::ranges::any_of(continueProcessing, [](const bool value) { return value; }));
+//         }
+//     } while (std::ranges::any_of(finushed, [](const bool value) { return !value; }));
+// }
+
 void ExternalSorting::mergingSubFiles(const std::vector<std::fstream *> &filesToRead,
                                       const std::vector<std::fstream *> &filesToWrite) {
-    std::vector positions(FILES_COUNT, 0);
-    std::vector finushed(FILES_COUNT, false);
-
-    for (int i = 0; i < FILES_COUNT; i++)
-        if (FilesActions::isFileEmpty(filesToRead[i]))
-            finushed[i] = true;
-
-    do {
+    std::vector fileFinushed(FILES_COUNT, false);
+    int fileToWrite = 0;
+    while (std::ranges::any_of(fileFinushed, [](const bool value) { return !value; })) {
+        std::vector<std::vector<int>> inputFilesNumbers(FILES_COUNT);
         for (int i = 0; i < FILES_COUNT; i++) {
-            if (std::ranges::all_of(finushed, [](const bool value) { return value; }))
-                break;
-
-            std::vector numbers(FILES_COUNT, 0);
-            std::vector previousNumbers(FILES_COUNT, 0);
-            std::vector continueProcessing(FILES_COUNT, false);
-
-            for (int j = 0; j < FILES_COUNT; j++) {
-                filesToRead[j]->seekg(positions[j] * INT_SIZE, std::ios::beg);
-                if (finushed[j] || filesToRead[j]->eof())
-                    continue;
-
-                filesToRead[j]->read(reinterpret_cast<char *>(&numbers[j]), sizeof(int));
-                positions[j]++;
-                continueProcessing[j] = true;
-            }
-
-            do {
-                const auto minIndex = minNumIndex(numbers, continueProcessing);
-                filesToWrite[i]->write(reinterpret_cast<const char *>(&numbers[minIndex]), sizeof(int));
-
-                continueProcessing[minIndex] = false;
-                previousNumbers[minIndex] = numbers[minIndex];
-                filesToRead[minIndex]->seekg(positions[minIndex] * INT_SIZE, std::ios::beg);
-                if (!filesToRead[minIndex]->read(reinterpret_cast<char *>(&numbers[minIndex]), sizeof(int))) {
-                    finushed[minIndex] = true;
-                    continue;
-                }
-                if (numbers[minIndex] < previousNumbers[minIndex]) {
-                    continue;
-                }
-                positions[minIndex]++;
-                continueProcessing[minIndex] = true;
-            } while (std::ranges::any_of(continueProcessing, [](const bool value) { return value; }));
+            filesToRead[i]->seekg(0, std::ios::beg);
+            inputFilesNumbers[i].resize(INTS_IN_MB);
+            if (!filesToRead[i]->read(reinterpret_cast<char *>(inputFilesNumbers[i].data()), INTS_IN_MB * sizeof(int)))
+                inputFilesNumbers[i].resize(filesToRead[i]->gcount() / sizeof(int));
         }
-    } while (std::ranges::any_of(finushed, [](const bool value) { return !value; }));
+
+        for (int i = 0; i < FILES_COUNT; i++)
+            if (inputFilesNumbers[i].empty())
+                fileFinushed[i] = true;
+
+        if (std::ranges::all_of(fileFinushed, [](const bool value) { return value; }))
+            break;
+
+        std::vector numbers(FILES_COUNT, 0);
+        std::vector previousNumbers(FILES_COUNT, 0);
+        std::vector positions(FILES_COUNT, 0);
+        std::vector continueProcessing(FILES_COUNT, false);
+
+        for (int i = 0; i < FILES_COUNT; i++) {
+            if (fileFinushed[i])
+                continue;
+
+            numbers[i] = inputFilesNumbers[i][positions[i]++];
+            continueProcessing[i] = true;
+        }
+
+        std::vector<std::vector<int>> outputFilesNumbers(FILES_COUNT);
+        std::vector finushed(FILES_COUNT, false);
+        while (std::ranges::any_of(finushed, [](const bool value) { return !value; })) {
+            for (; fileToWrite < FILES_COUNT; fileToWrite++) {
+                while (std::ranges::any_of(continueProcessing, [](const bool value) { return value; })) {
+                    const auto minIndex = minNumIndex(numbers, continueProcessing);
+                    outputFilesNumbers[fileToWrite].push_back(numbers[minIndex]);
+
+                    continueProcessing[minIndex] = false;
+                    previousNumbers[minIndex] = numbers[minIndex];
+                    numbers[minIndex] = inputFilesNumbers[minIndex][positions[minIndex]];
+
+                    if (positions[minIndex] == inputFilesNumbers[minIndex].size()) {
+                        finushed[minIndex] = true;
+                        continue;
+                    }
+
+                    positions[minIndex]++;
+                    if (previousNumbers[minIndex] > numbers[minIndex])
+                        continue;
+
+                    continueProcessing[minIndex] = true;
+                }
+
+                for (int i = 0; i < FILES_COUNT; i++)
+                    if (!finushed[i])
+                        continueProcessing[i] = true;
+
+                if (std::ranges::all_of(finushed, [](const bool value) { return value; }))
+                    break;
+
+                if (fileToWrite == FILES_COUNT - 1)
+                    fileToWrite = -1;
+            }
+        }
+        fileToWrite++;
+
+        for (int i = 0; i < FILES_COUNT; i++)
+            filesToWrite[i]->write(reinterpret_cast<const char *>(outputFilesNumbers[i].data()), outputFilesNumbers[i].size() * sizeof(int));
+    }
+
+    // std::ranges::for_each(filesToWrite, [](std::fstream *file){ file->seekg(0, std::ios::beg); });
+    // for (int i = 0; i < FILES_COUNT; i++) {
+    //     std::cout << '#' << i + 1 << ' ';
+    //     int number;
+    //     while (filesToWrite[i]->read(reinterpret_cast<char *>(&number), sizeof(int)))
+    //         std::cout << number << ' ';
+    //     std::cout << std::endl;
+    // }
 }
 
 void ExternalSorting::switchFiles() {
