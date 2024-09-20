@@ -4,7 +4,7 @@
 #include "Generator.h"
 #include "FilesActions.h"
 
-constexpr int FILE_SIZE_MB = 10;
+constexpr int FILE_SIZE_MB = 2;
 constexpr int SORT_PART_SIZE_MB = 1;
 constexpr int MIN_INT = 1;
 constexpr int MAX_INT = 100;
@@ -35,17 +35,17 @@ int main() {
 
     std::cout << "Generating..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
-    //Generator::fileFileWithNumbers(inputFile, FILE_SIZE_MB, MIN_INT, MAX_INT);
-    std::vector numbers = {3, 7, 2, 5, 10, 6, 1, 8, 9, 4, 7, 5, 2, 6, 9, 3, 8, 1, 10, 4, 5, 7, 2, 6, 9, 3, 8, 10, 1, 4};
+    Generator::fileFileWithNumbers(inputFile, FILE_SIZE_MB, MIN_INT, MAX_INT);
+    //std::vector numbers = {3, 7, 2, 5, 10, 6, 1, 8, 9, 4, 7, 5, 2, 6, 9, 3, 8, 1, 10, 4, 5, 7, 2, 6, 9, 3, 8, 10, 1, 4};
     // #1 3 7 / 1 8 9 / 2 6 9 / 4 5 7 / 1 4
     // #2 2 5 10 / 4 7 / 3 8 / 2 6 9
     // #3 6 / 5 / 1 10 / 3 8 10
     // 2 3 5 6 7 10 / 2 3 4 5 6 7 8 9 10
     // 1 4 5 7 8 9 / 1 4
     // 1 2 3 6 8 9 10
-    std::ofstream file(inputFile, std::ios::binary);
-    file.write(reinterpret_cast<const char *>(numbers.data()), numbers.size() * sizeof(int));
-    file.close();
+    // std::ofstream file(inputFile, std::ios::binary);
+    // file.write(reinterpret_cast<const char *>(numbers.data()), numbers.size() * sizeof(int));
+    // file.close();
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     std::cout << "Operation took " << duration.count() << " seconds." << std::endl;
