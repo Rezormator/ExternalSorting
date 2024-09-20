@@ -4,7 +4,7 @@
 #include "Generator.h"
 #include "FilesActions.h"
 
-constexpr int FILE_SIZE_MB = 10;
+constexpr int FILE_SIZE_MB = 100;
 constexpr int SORT_PART_SIZE_MB = 1;
 constexpr int MIN_INT = 1;
 constexpr int MAX_INT = 100;
@@ -12,7 +12,9 @@ constexpr int MAX_INT = 100;
 int main() {
     const std::string inputFile = "../files/A.bin";
     const std::vector<std::string> subFilesB{"../files/B1.bin", "../files/B2.bin", "../files/B3.bin"};
-    const std::vector<std::string> subFilesC{"../files/C1.bin", "../files/C2.bin", "../files/C3.bin"}; {
+    const std::vector<std::string> subFilesC{"../files/C1.bin", "../files/C2.bin", "../files/C3.bin"};
+
+    {
         std::ofstream file(inputFile, std::ios::binary | std::ios::trunc);
         file.close();
     }
@@ -55,13 +57,6 @@ int main() {
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     std::cout << "Operation took " << duration.count() << " seconds." << std::endl;
-
-    // std::cout << "Sorting..." << std::endl;
-    // start = std::chrono::high_resolution_clock::now();
-    // FilesActions::sortFileBySection(inputFile, tempFile, SORT_PART_SIZE_MB);
-    // end = std::chrono::high_resolution_clock::now();
-    // duration = end - start;
-    // std::cout << "Operation took " << duration.count() << " seconds." << std::endl;
 
     std::cout << "Mergin..." << std::endl;
     start = std::chrono::high_resolution_clock::now();

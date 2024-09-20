@@ -14,8 +14,8 @@ private:
 
     void switchFiles();
     void mergingInputFile(const std::vector<std::fstream *> &subFiles) const;
-    static void mergingSubFiles(const std::vector<std::fstream *> &filesToRead,
-                                const std::vector<std::fstream *> &filesToWrite);
+    void impruvedMergingInputFile(const std::vector<std::fstream *> &subFiles) const;
+    static void mergingSubFiles(const std::vector<std::fstream *> &filesToRead, const std::vector<std::fstream *> &filesToWrite);
     static bool continueMerging(const std::vector<bool> &finishedVector, const std::vector<bool> &finishedFile);
     static bool increasFileNumber(const std::vector<int> &current, const std::vector<int> &previous);
     static int minNumIndex(const std::vector<int> &numbers, const std::vector<bool> &condition);
