@@ -4,24 +4,32 @@
 #include <vector>
 #include <fstream>
 
+typedef std::vector<std::string> strings;
+typedef std::vector<bool> bools;
+typedef std::vector<std::fstream *> fstreams;
+typedef std::vector<int> ints;
+typedef std::vector<std::vector<int>> intsVector;
+
 class ExternalSorting {
 private:
     const std::string inputFile;
-    const std::vector<std::string> subFilesB;
-    const std::vector<std::string> subFilesC;
+    const strings subFilesB;
+    const strings subFilesC;
     int filesToRead;
     int filesToWrite;
+    int sortType;
+    unsigned long long readStep;
 
     void switchFiles();
-    void mergingInputFile(const std::vector<std::fstream *> &subFiles) const;
-    void impruvedMergingInputFile(const std::vector<std::fstream *> &subFiles) const;
-    static void mergingSubFiles(const std::vector<std::fstream *> &filesToRead, const std::vector<std::fstream *> &filesToWrite);
-    static bool continueMerging(const std::vector<bool> &finishedVector, const std::vector<bool> &finishedFile);
-    static bool increasFileNumber(const std::vector<int> &current, const std::vector<int> &previous);
-    static int minNumIndex(const std::vector<int> &numbers, const std::vector<bool> &condition);
-    static bool isSorted(const std::vector<std::fstream *> &files);
+    void mergingInputFile(const fstreams &subFiles) const;
+    void impruvedMergingInputFile(const fstreams &subFiles) const;
+    void mergingSubFiles(const fstreams &filesToRead, const fstreams &filesToWrite) const;
+    static bool continueMerging(const bools &finishedVector, const bools &finishedFile);
+    static bool increasFileNumber(const ints &current, const ints &previous);
+    static bool isSorted(const fstreams &files);
+    static int minNumIndex(const ints &numbers, const bools &condition);
 public:
-    ExternalSorting(std::string inputFile, const std::vector<std::string> &subFilesB,
-                    const std::vector<std::string> &subFilesC);
-    void mergin();
+    ExternalSorting(std::string inputFile, strings subFilesB, strings subFilesC, int sortType, int fileSize);
+    std::string mergin();
+    static bool checkSorted(const std::string &fileName);
 };

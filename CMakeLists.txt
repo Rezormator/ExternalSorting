@@ -10,4 +10,6 @@ add_executable(externalSorting main.cpp
         Generator.cpp
         FilesActions.h
         FilesActions.cpp
+        Input.cpp
+        Input.h
 )

@@ -4,42 +4,33 @@
 #include "FilesActions.h"
 #include <iostream>
 #include <chrono>
+#include <cmath>
 
 constexpr int FILES_COUNT = 3;
 constexpr int INT_SIZE = 4;
-constexpr int INTS_IN_MB = 2621440;
-// constexpr int INTS_IN_MB = 3;
+constexpr int EXTERNAL_SORT = 0;
+constexpr int IMPRUVED_EXTERNAL_SORT = 1;
+constexpr int INTS_IN_MB = 262144;
 
-ExternalSorting::ExternalSorting(std::string inputFile, const std::vector<std::string> &subFilesB,
-                                 const std::vector<std::string> &subFilesC)
-    : inputFile(std::move(inputFile)), subFilesB(subFilesB), subFilesC(subFilesC) {
+ExternalSorting::ExternalSorting(std::string inputFile, strings subFilesB, strings subFilesC, const int sortType,
+                                 const int fileSize)
+    : inputFile(std::move(inputFile)), subFilesB(std::move(subFilesB)), subFilesC(std::move(subFilesC)),
+      sortType(sortType) {
     filesToRead = 0;
     filesToWrite = 1;
+    readStep = std::ceil(fileSize / 5 * INTS_IN_MB);
 }
 
-bool checkSorted(const char *targetFile) {
-    std::ifstream is{targetFile, std::ios::binary};
-    unsigned int prevNum{0}, curNum;
-    bool isSorted{true};
-    while(is.read(reinterpret_cast<char *>(&curNum), sizeof(curNum))) {
-        if(curNum < prevNum) {
-            isSorted = false;
-            break;
-        }
-        prevNum = curNum;
-    }
-    is.close();
-    return isSorted;
-}
-
-void ExternalSorting::mergin() {
+std::string ExternalSorting::mergin() {
     std::vector subFiles{FilesActions::openAllFiles(subFilesB), FilesActions::openAllFiles(subFilesC)};
-    const auto start = std::chrono::high_resolution_clock::now();
-    impruvedMergingInputFile(subFiles[filesToRead]);
-    std::cout << "Input file merged." << std::endl;
-    const auto end = std::chrono::high_resolution_clock::now();
-    const std::chrono::duration<double> duration = end - start;
-    std::cout << "Operation took " << duration.count() << " seconds." << std::endl;
+
+    switch (sortType) {
+        case EXTERNAL_SORT:
+        default:
+            mergingInputFile(subFiles[filesToRead]);
+        case IMPRUVED_EXTERNAL_SORT:
+            impruvedMergingInputFile(subFiles[filesToRead]);
+    }
 
     const std::vector subFilesNames = {subFilesB, subFilesC};
     while (!isSorted(subFiles[filesToRead])) {
@@ -50,63 +41,60 @@ void ExternalSorting::mergin() {
     for (const auto &subFilesGroup: subFiles)
         FilesActions::closeAllFiles(subFilesGroup);
 
-    std::cout << checkSorted(subFilesNames[filesToRead][0].c_str()) << std::endl;
+    return subFilesNames[filesToRead][0];
 }
 
-void ExternalSorting::mergingInputFile(const std::vector<std::fstream *> &subFiles) const {
+void ExternalSorting::mergingInputFile(const fstreams &subFiles) const {
     std::ifstream file(inputFile, std::ios::binary);
-    std::vector previous(FILES_COUNT, 0);
+    ints previous(FILES_COUNT, 0);
     bool finishedFile = false;
     int fileNumber = 0;
 
     do {
-        std::vector<int> inputNumbers(INTS_IN_MB);
-        if (!file.read(reinterpret_cast<char *>(inputNumbers.data()), INTS_IN_MB * sizeof(int))) {
-            inputNumbers.resize(file.gcount() / sizeof(int));
-        }
+        ints input(readStep);
+        if (!file.read(reinterpret_cast<char *>(input.data()), readStep * sizeof(int)))
+            input.resize(file.gcount() / sizeof(int));
 
-        if (inputNumbers.empty()) {
+        if (input.empty()) {
             finishedFile = true;
             continue;
         }
 
-        std::vector<std::vector<int> > outputNumbers(FILES_COUNT);
-        int position = 0;
+        intsVector output(FILES_COUNT);
         bool finishedVector = false;
+        int position = 0;
         do {
-            if (previous[fileNumber] > inputNumbers[position])
+            if (previous[fileNumber] > input[position])
                 fileNumber++;
 
             if (fileNumber == FILES_COUNT)
                 fileNumber = 0;
 
             do {
-                outputNumbers[fileNumber].push_back(inputNumbers[position]);
-                previous[fileNumber] = inputNumbers[position++];
-                if (position >= inputNumbers.size())
+                output[fileNumber].push_back(input[position]);
+                previous[fileNumber] = input[position++];
+                if (position >= input.size())
                     finishedVector = true;
-            } while (previous[fileNumber] <= inputNumbers[position] && !finishedVector);
+            } while (previous[fileNumber] <= input[position] && !finishedVector);
         } while (!finishedVector);
 
         for (int i = 0; i < FILES_COUNT; i++)
-            subFiles[i]->write(reinterpret_cast<const char *>(outputNumbers[i].data()),
-                               outputNumbers[i].size() * sizeof(int));
+            subFiles[i]->write(reinterpret_cast<const char *>(output[i].data()), output[i].size() * sizeof(int));
     } while (!finishedFile);
 
     file.close();
 }
 
-void ExternalSorting::impruvedMergingInputFile(const std::vector<std::fstream *> &subFiles) const {
+void ExternalSorting::impruvedMergingInputFile(const fstreams &subFiles) const {
     std::ifstream file(inputFile, std::ios::binary);
-    std::vector previous(FILES_COUNT, 0);
+    ints previous(FILES_COUNT, 0);
     bool finishedFile = false;
     int fileNumber = 0;
 
     do {
-        std::vector<int> numbers(INTS_IN_MB);
-        if (!file.read(reinterpret_cast<char *>(numbers.data()), INTS_IN_MB * sizeof(int))) {
+        ints numbers(readStep);
+        if (!file.read(reinterpret_cast<char *>(numbers.data()), readStep * sizeof(int)))
             numbers.resize(file.gcount() / sizeof(int));
-        }
 
         if (numbers.empty()) {
             finishedFile = true;
@@ -114,30 +102,27 @@ void ExternalSorting::impruvedMergingInputFile(const std::vector<std::fstream *>
         }
 
         std::ranges::sort(numbers);
-
         if (fileNumber == FILES_COUNT)
             fileNumber = 0;
 
         subFiles[fileNumber]->write(reinterpret_cast<const char *>(numbers.data()), numbers.size() * sizeof(int));
-
         fileNumber++;
     } while (!finishedFile);
 
     file.close();
 }
 
-void ExternalSorting::mergingSubFiles(const std::vector<std::fstream *> &filesToRead,
-                                      const std::vector<std::fstream *> &filesToWrite) {
-    std::vector finishedFile(FILES_COUNT, false);
-    std::vector finishedVector(FILES_COUNT, true);
-    std::vector<std::vector<int> > inputNumbers(FILES_COUNT);
-    std::vector<std::vector<int> > outputNumbers(FILES_COUNT);
-    std::vector timesRead(FILES_COUNT, 0);
-    std::vector current(FILES_COUNT, 0);
-    std::vector previous(FILES_COUNT, 0);
-    std::vector positions(FILES_COUNT, 0);
-    std::vector continueWrite(FILES_COUNT, true);
-    std::vector hasValue(FILES_COUNT, false);
+void ExternalSorting::mergingSubFiles(const fstreams &filesToRead, const fstreams &filesToWrite) const {
+    bools finishedFile(FILES_COUNT, false);
+    bools finishedVector(FILES_COUNT, true);
+    intsVector input(FILES_COUNT);
+    intsVector output(FILES_COUNT);
+    ints timesRead(FILES_COUNT, 0);
+    ints current(FILES_COUNT, 0);
+    ints previous(FILES_COUNT, 0);
+    ints positions(FILES_COUNT, 0);
+    bools continueWrite(FILES_COUNT, true);
+    bools hasValue(FILES_COUNT, false);
     int fileNumber = 0;
 
     do {
@@ -146,16 +131,15 @@ void ExternalSorting::mergingSubFiles(const std::vector<std::fstream *> &filesTo
                 continue;
 
             positions[i] = 0;
-            inputNumbers[i].resize(INTS_IN_MB);
-            filesToRead[i]->seekg(timesRead[i]++ * INTS_IN_MB * INT_SIZE, std::ios::beg);
-            if (!filesToRead[i]->read(reinterpret_cast<char *>(inputNumbers[i].data()), INTS_IN_MB * sizeof(int)))
-                inputNumbers[i].resize(filesToRead[i]->gcount() / sizeof(int));
+            input[i].resize(readStep);
+            filesToRead[i]->seekg(timesRead[i]++ * readStep * INT_SIZE, std::ios::beg);
+            if (!filesToRead[i]->read(reinterpret_cast<char *>(input[i].data()), readStep * sizeof(int)))
+                input[i].resize(filesToRead[i]->gcount() / sizeof(int));
 
-            if (inputNumbers[i].empty()) {
+            if (input[i].empty()) {
                 finishedFile[i] = true;
                 continueWrite[i] = false;
-            }
-            else {
+            } else {
                 finishedVector[i] = false;
             }
         }
@@ -167,8 +151,8 @@ void ExternalSorting::mergingSubFiles(const std::vector<std::fstream *> &filesTo
             if (finishedFile[i] || hasValue[i])
                 continue;
 
-            current[i] = inputNumbers[i][positions[i]++];
             hasValue[i] = true;
+            current[i] = input[i][positions[i]++];
             if (current[i] < previous[i])
                 continueWrite[i] = false;
         }
@@ -183,11 +167,11 @@ void ExternalSorting::mergingSubFiles(const std::vector<std::fstream *> &filesTo
 
             do {
                 const int minIndex = minNumIndex(current, continueWrite);
-                outputNumbers[fileNumber].push_back(current[minIndex]);
+                output[fileNumber].push_back(current[minIndex]);
                 previous[minIndex] = current[minIndex];
-                current[minIndex] = inputNumbers[minIndex][positions[minIndex]];
+                current[minIndex] = input[minIndex][positions[minIndex]];
 
-                if (positions[minIndex] == inputNumbers[minIndex].size()) {
+                if (positions[minIndex] == input[minIndex].size()) {
                     finishedVector[minIndex] = true;
                     hasValue[minIndex] = false;
                     continue;
@@ -202,13 +186,13 @@ void ExternalSorting::mergingSubFiles(const std::vector<std::fstream *> &filesTo
         } while (continueMerging(finishedVector, finishedFile));
 
         for (int i = 0; i < FILES_COUNT; i++) {
-            filesToWrite[i]->write(reinterpret_cast<const char *>(outputNumbers[i].data()),outputNumbers[i].size() * sizeof(int));
-            outputNumbers[i].clear();
+            filesToWrite[i]->write(reinterpret_cast<const char *>(output[i].data()), output[i].size() * sizeof(int));
+            output[i].clear();
         }
     } while (std::ranges::any_of(finishedFile, [](const bool value) { return !value; }));
 }
 
-bool ExternalSorting::continueMerging(const std::vector<bool> &finishedVector, const std::vector<bool> &finishedFile) {
+bool ExternalSorting::continueMerging(const bools &finishedVector, const bools &finishedFile) {
     for (int i = 0; i < FILES_COUNT; i++) {
         if ((finishedVector[i] && finishedFile[i]) || !finishedVector[i])
             continue;
@@ -217,7 +201,7 @@ bool ExternalSorting::continueMerging(const std::vector<bool> &finishedVector, c
     return true;
 }
 
-bool ExternalSorting::increasFileNumber(const std::vector<int> &current, const std::vector<int> &previous) {
+bool ExternalSorting::increasFileNumber(const ints &current, const ints &previous) {
     for (int i = 0; i < FILES_COUNT; i++)
         if (current[i] > previous[i])
             return false;
@@ -228,7 +212,7 @@ void ExternalSorting::switchFiles() {
     std::swap(filesToRead, filesToWrite);
 }
 
-int ExternalSorting::minNumIndex(const std::vector<int> &numbers, const std::vector<bool> &condition) {
+int ExternalSorting::minNumIndex(const ints &numbers, const bools &condition) {
     int minIndex = -1;
     for (int i = 0; i < numbers.size(); i++)
         if (condition[i] == true)
@@ -237,8 +221,23 @@ int ExternalSorting::minNumIndex(const std::vector<int> &numbers, const std::vec
     return minIndex;
 }
 
-bool ExternalSorting::isSorted(const std::vector<std::fstream *> &files) {
+bool ExternalSorting::isSorted(const fstreams &files) {
     return !FilesActions::isFileEmpty(files[0])
            && FilesActions::isFileEmpty(files[1])
            && FilesActions::isFileEmpty(files[2]);
+}
+
+bool ExternalSorting::checkSorted(const std::string &fileName) {
+    std::ifstream file(fileName, std::ios::binary);
+    unsigned int prevNum{0}, curNum;
+    bool isSorted{true};
+    while (file.read(reinterpret_cast<char *>(&curNum), sizeof(curNum))) {
+        if (curNum < prevNum) {
+            isSorted = false;
+            break;
+        }
+        prevNum = curNum;
+    }
+    file.close();
+    return isSorted;
 }
