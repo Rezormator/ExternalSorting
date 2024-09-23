@@ -19,6 +19,7 @@ private:
     int filesToWrite;
     int sortType;
     unsigned long long readStep;
+    unsigned long long readStepForSubFiles;
 
     void switchFiles();
     void mergingInputFile(const fstreams &subFiles) const;
@@ -32,4 +33,5 @@ public:
     ExternalSorting(std::string inputFile, strings subFilesB, strings subFilesC, int sortType, int fileSize);
     std::string mergin();
     static bool checkSorted(const std::string &fileName);
+    static bool limitMemory(int limit);
 };

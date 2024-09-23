@@ -5,7 +5,6 @@
 #include "FilesActions.h"
 #include "Input.h"
 
-constexpr int FILE_SIZE_MB = 1024;
 constexpr int MIN_INT = 1;
 constexpr int MAX_INT = 100;
 constexpr int EXIT = 2;
@@ -22,21 +21,26 @@ int main() {
     const int sortType = Input::indexMenu({"External sort", "Impruved extrnal sort"});
     ExternalSorting externalSorting(inputFile, subFilesB, subFilesC, sortType, fileSize);
 
-    std::cout << FILE_SIZE_MB << " MB " << "Generating..." << std::endl;
+    std::cout << fileSize << " MB " << "Generating..." << std::endl;
     auto start = std::chrono::high_resolution_clock::now();
     Generator::fileFileWithNumbers(inputFile, fileSize, minInt, maxInt);
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
     std::cout << "Operation took " << duration.count() << " seconds." << std::endl;
 
-    std::cout << FILE_SIZE_MB << " MB " << "Mergin..." << std::endl;
+    if (ExternalSorting::limitMemory(fileSize / 2)) {
+        std::cout << "Error memory limiting" << std::endl;
+        return -1;
+    }
+
+    std::cout << fileSize << " MB " << "Mergin..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     const std::string sortedFile = externalSorting.mergin();
     end = std::chrono::high_resolution_clock::now();
     duration = end - start;
     std::cout << "Operation took " << duration.count() << " seconds." << std::endl;
 
-    std::cout << FILE_SIZE_MB << " MB " << "Checking..." << std::endl;
+    std::cout << fileSize << " MB " << "Checking..." << std::endl;
     start = std::chrono::high_resolution_clock::now();
     std::cout << (ExternalSorting::checkSorted(sortedFile) ? "Sorted" : "Unsorted") << std::endl;
     end = std::chrono::high_resolution_clock::now();

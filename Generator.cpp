@@ -2,10 +2,10 @@
 #include <random>
 #include <fstream>
 
-constexpr int INT_IN_MB = 262144;
+constexpr int INTS_IN_MB = 262144;
 
 void Generator::fileFileWithNumbers(const std::string &fileName, const int megabytes, const int min, const int max) {
-    std::vector<int> buffer(INT_IN_MB * megabytes);
+    std::vector<int> buffer(INTS_IN_MB * megabytes);
     std::random_device rd;
     std::mt19937 gen(rd());
 
@@ -14,6 +14,6 @@ void Generator::fileFileWithNumbers(const std::string &fileName, const int megab
         std::uniform_int_distribution<> distr(min, max);
         number = distr(gen);
     }
-    file.write(reinterpret_cast<const char*>(buffer.data()), INT_IN_MB * megabytes * sizeof(int));
+    file.write(reinterpret_cast<const char*>(buffer.data()), INTS_IN_MB * megabytes * sizeof(int));
     file.close();
 }

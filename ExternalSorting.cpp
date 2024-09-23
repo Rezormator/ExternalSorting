@@ -5,12 +5,15 @@
 #include <iostream>
 #include <chrono>
 #include <cmath>
+#include <windows.h>
+#include <psapi.h>
 
 constexpr int FILES_COUNT = 3;
 constexpr int INT_SIZE = 4;
 constexpr int EXTERNAL_SORT = 0;
 constexpr int IMPRUVED_EXTERNAL_SORT = 1;
 constexpr int INTS_IN_MB = 262144;
+constexpr int READ_STEPS_COUNT = 10;
 
 ExternalSorting::ExternalSorting(std::string inputFile, strings subFilesB, strings subFilesC, const int sortType,
                                  const int fileSize)
@@ -18,7 +21,8 @@ ExternalSorting::ExternalSorting(std::string inputFile, strings subFilesB, strin
       sortType(sortType) {
     filesToRead = 0;
     filesToWrite = 1;
-    readStep = std::ceil(fileSize / 5 * INTS_IN_MB);
+    readStep = std::ceil(fileSize / READ_STEPS_COUNT * INTS_IN_MB);
+    readStepForSubFiles = std::ceil(std::ceil(readStep / FILES_COUNT) / FILES_COUNT);
 }
 
 std::string ExternalSorting::mergin() {
@@ -131,9 +135,9 @@ void ExternalSorting::mergingSubFiles(const fstreams &filesToRead, const fstream
                 continue;
 
             positions[i] = 0;
-            input[i].resize(readStep);
-            filesToRead[i]->seekg(timesRead[i]++ * readStep * INT_SIZE, std::ios::beg);
-            if (!filesToRead[i]->read(reinterpret_cast<char *>(input[i].data()), readStep * sizeof(int)))
+            input[i].resize(readStepForSubFiles);
+            filesToRead[i]->seekg(timesRead[i]++ * readStepForSubFiles * INT_SIZE, std::ios::beg);
+            if (!filesToRead[i]->read(reinterpret_cast<char *>(input[i].data()), readStepForSubFiles * sizeof(int)))
                 input[i].resize(filesToRead[i]->gcount() / sizeof(int));
 
             if (input[i].empty()) {
@@ -240,4 +244,23 @@ bool ExternalSorting::checkSorted(const std::string &fileName) {
     }
     file.close();
     return isSorted;
+}
+
+bool ExternalSorting::limitMemory(const int limit) {
+    HANDLE job = CreateJobObject(nullptr, nullptr);
+
+    if (job == nullptr)
+        return false;
+
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION info = {};
+    info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_PROCESS_MEMORY;
+    info.ProcessMemoryLimit = limit * 1024 * 1024;
+
+    if (!SetInformationJobObject(job, JobObjectExtendedLimitInformation, &info, sizeof(info)))
+        return false;
+
+    if (!AssignProcessToJobObject(job, GetCurrentProcess()))
+        return false;
+
+    return true;
 }
